@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Example</title>
+</head>
+<body>
+<script type="text/javascript">
+
+function getExtension(gl, name){
+            var vendorPrefixes = ["", "WEBKIT_", "MOZ_"];
+            var i, ext;
+            for(i in vendorPrefixes) {
+                ext = gl.getExtension(vendorPrefixes[i] + name);
+                if (ext) {
+                    return ext;
+
+                }
+            }
+            return null;
+
+        }
+
+function shaderProgram(gl, vs, fs) {
+	var prog = gl.createProgram();
+	var addshader = function(type, source) {
+		var s = gl.createShader((type == 'vertex') ?
+			gl.VERTEX_SHADER : gl.FRAGMENT_SHADER);
+		gl.shaderSource(s, source);
+		gl.compileShader(s);
+		if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+			throw "Could not compile "+type+
+				" shader:\n\n"+gl.getShaderInfoLog(s);
+		}
+		gl.attachShader(prog, s);
+	};
+	addshader('vertex', vs);
+	addshader('fragment', fs);
+	gl.linkProgram(prog);
+	if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+		throw "Could not link the shader program!";
+	}
+	return prog;
+}
+
+function attributeSetFloats(gl, prog, attr_name, rsize, arr) {
+	gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(arr),
+		gl.STATIC_DRAW);
+	var attr = gl.getAttribLocation(prog, attr_name);
+	gl.enableVertexAttribArray(attr);
+	gl.vertexAttribPointer(attr, rsize, gl.FLOAT, false, 0, 0);
+}
+
+function draw() {
+    
+	try {
+		var gl = document.getElementById("webgl")
+			.getContext("experimental-webgl");
+		if (!gl) { throw "x"; }
+	} catch (err) {
+		throw "Your web browser does not support WebGL!";
+	}
+        
+        var instanceExt = getExtension(gl, "ANGLE_instanced_arrays");
+        var FloatExt = getExtension(gl, "OES_texture_float");
+        
+        
+	gl.clearColor(0.8, 0.8, 0.8, 1);
+	gl.clear(gl.COLOR_BUFFER_BIT);
+
+	var prog = shaderProgram(gl,
+		"attribute vec3 pos;"+
+                "attribute vec2 uv;"+
+                "attribute float index;"+
+                "uniform sampler2D u_texture;"+
+                "varying vec4 color;"+
+		"void main() {"+
+                "color = texture2D(u_texture, uv);"+
+                "float res = 4.0;"+
+                "float pos_index = index; "+
+                "vec2 uv_worldpos = vec2(mod(pos_index, res)/res , floor(pos_index/res)/res);"+
+                "vec4 InstancePos = texture2D(u_texture, uv_worldpos);"+
+		"	gl_Position = vec4(pos*0.1 + InstancePos.xyz, 2.0);"+
+                
+		"}",
+
+                "precision highp float;"+
+
+                "varying vec4 color;"+
+		"void main() {"+
+		"	gl_FragColor = color;"+
+		"}"
+	);
+	gl.useProgram(prog);
+
+	attributeSetFloats(gl, prog, "pos", 3, [
+		-1, 0, 0,
+		0, 1, 0,
+		0, -1, 0,
+		1, 0, 0
+	]);
+	attributeSetFloats(gl, prog, "uv", 2, [
+		0, 0,
+		1, 0,
+		0, 1,
+		1, 1,
+	]);
+	
+        var indices = [ 0, 1, 2, 1, 3, 2 ];
+        var indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.DYNAMIC_DRAW);
+         
+         
+        //var texture = gl.createTexture();      
+        //gl.bindTexture(gl.TEXTURE_2D, texture);
+        //gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 2, 2, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+        //              new Uint8Array([
+        //                  255, 0, 0, 255,
+        //                  0, 255, 0, 255,
+        //                  0, 0, 255, 255,
+        //                  255, 255, 0, 255]));
+        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  
+        //float texture
+              var texture_buffer = [0.7500, 0.7500, 0.0000, 0.0000, 0.2500, 0.7500, 0.0000, 0.0000, -0.2500, 0.7500, 0.0000, 0.0000, -0.7500, 0.7500, 0.0000, 0.0000, 0.7500, 0.2500, 0.0000, 0.0000, 0.2500, 0.2500, 0.0000, 0.0000, -0.2500, 0.2500, 0.0000, 0.0000, -0.7500, 0.2500, 0.0000, 0.0000, 0.7500, -0.2500, 0.0000, 0.0000, 0.2500, -0.2500, 0.0000, 0.0000, -0.2500, -0.2500, 0.0000, 0.0000, -0.7500, -0.2500, 0.0000, 0.0000, 0.7500, -0.7500, 0.0000, 0.0000, 0.2500, -0.7500, 0.0000, 0.0000, -0.2500, -0.7500, 0.0000, 0.0000, -0.7500, -0.7500, 0.0000, 0.0000];
+              var float32 = new Float32Array(texture_buffer);
+
+        
+              var texture_float = gl.createTexture();  
+              gl.bindTexture(gl.TEXTURE_2D, texture_float);
+              
+              var alignment = 1;
+              gl.pixelStorei(gl.UNPACK_ALIGNMENT, alignment); //is needed to unpack the data correctly
+              var level = 0;
+              var internalFormat = gl.RGBA;
+              var width = 4;
+              var height = 4;
+              var border = 0;
+              var format = gl.RGBA;
+              var type = gl.FLOAT;
+
+              gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border,
+                            format, type, float32);
+
+              // set the filtering so we don't need mips and it's not filtered
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+              gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  
+  
+  
+        //instancing
+        var instanceBuffers = gl.createBuffer();
+        var semantic = "index";
+        var VectorSize = 3;
+        var Divisor = 1;
+        var bufferData = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+        gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffers);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(bufferData), gl.STATIC_DRAW);
+  
+        var attribute_pos = [0,1,2];
+        var attribute_vectorsize = [3,2,3];
+        var attribute_offset = [0,12,20]
+        gl.enableVertexAttribArray(attribute_pos);
+        gl.vertexAttribPointer(attribute_pos, attribute_vectorsize, gl.FLOAT, false, 0, attribute_offset);
+        
+        gl.bindBuffer(gl.ARRAY_BUFFER, instanceBuffers);
+           gl.enableVertexAttribArray(2);
+           gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);  //stride can be 12 or 0
+           instanceExt.vertexAttribDivisorANGLE(2, 1);
+        
+        instanceExt.drawElementsInstancedANGLE(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0, 16);
+	//gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+function init() {
+	try {
+		draw();
+	} catch (e) {
+		alert("Error: "+e);
+	}
+}
+setTimeout(init, 100);
+
+</script>
+<canvas id="webgl" width="640" height="480"></canvas>
+</body>
+</html>
